@@ -3,106 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>20초 광고 후 리디렉션</title>
+    <title>광고 시청 후 이동</title>
     <style>
-        /* CSS 스타일링 */
+        /* 변수 설정 */
+        :root {
+            --primary-color: #1a73e8; /* Google Blue */
+            --text-color: #ffffff;    /* 배경 위에 잘 보이도록 흰색으로 설정 */
+            --image-url: url('https://i.postimg.cc/cH9Br0N4/jemog-eul-iblyeoghaejuseyo-004.png');
+        }
+
+        /* 1. 레이아웃 및 폰트 설정 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'Roboto', 'Arial', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: center; /* 전체 콘텐츠 중앙 정렬 */
             min-height: 100vh;
             margin: 0;
-            background-color: #f4f7f6;
-            color: #333;
-            text-align: center;
+            color: var(--text-color);
+            position: relative;
+            overflow: hidden;
+            background-color: #000; /* 폴백 검정 배경 */
         }
 
+        /* 2. 블러 처리된 배경 이미지 (Full-bleed) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: var(--image-url);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* 블러 효과를 높여 배경과 전경 텍스트가 명확히 구분되도록 함 */
+            filter: blur(15px) brightness(0.7); 
+            z-index: -1;
+        }
+
+        /* 3. 메인 콘텐츠 컨테이너 (흰색 배경 및 그림자 삭제 요청 반영 -> 투명) */
         .container {
-            background-color: #fff;
+            /* 앱 스타일을 위해 흰색 배경 제거 */
+            background-color: transparent; 
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 0;
+            box-shadow: none; 
             max-width: 90%;
             width: 500px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* 텍스트가 블러 배경 위에 선명하게 보이도록 그림자 추가 */
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.5); 
         }
-
+        
+        /* 4. 헤더: 쓸데없는 말 삭제, 간결화 */
         h1 {
-            color: #d9534f;
-            margin-bottom: 20px;
+            color: var(--text-color);
+            margin-bottom: 10px;
             font-size: 1.5rem;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 10px;
+            font-weight: 500;
+            text-align: center;
+            opacity: 0.8; /* 약간 흐릿하게 처리하여 이미지에 집중 */
         }
 
         .countdown-message {
             font-size: 1.1rem;
-            margin-bottom: 15px;
-            color: #555;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            font-weight: 300;
         }
 
+        /* 5. 타이머: 흰색 배경 제거, 큰 폰트로 중앙에 위치 */
         #countdown {
-            font-size: 3rem;
-            font-weight: bold;
-            color: #5cb85c;
-            margin-bottom: 20px;
-            display: inline-block;
-            padding: 10px 20px;
-            border: 3px solid #5cb85c;
-            border-radius: 8px;
-            background-color: #eaf8ea;
+            font-size: 4rem;
+            font-weight: 700; 
+            color: var(--text-color);
+            margin-bottom: 30px;
+            /* 배경 및 테두리 제거 */
+            background-color: transparent;
+            border: none;
+            line-height: 1;
         }
 
+        /* 6. 광고 이미지: 중앙 배치 및 최대 크기 조정 */
         #ad-image {
-            max-width: 100%;
+            max-width: 100%; 
             height: auto;
+            max-height: 350px; 
+            object-fit: contain;
             border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .destination {
-            margin-top: 15px;
-            font-size: 0.9rem;
-            color: #777;
+            margin-bottom: 30px;
+            /* 이미지도 앱 화면처럼 테두리/그림자 없이 깔끔하게 */
+            box-shadow: none; 
+            border: none;
         }
 
         /* 모바일 반응형 설정 */
         @media (max-width: 600px) {
-            .container {
-                padding: 15px;
-            }
             h1 {
                 font-size: 1.3rem;
             }
             #countdown {
-                font-size: 2.5rem;
+                font-size: 3.5rem;
+            }
+            .container {
+                width: 95%;
             }
         }
     </style>
 </head>
 <body>
+    
     <div class="container">
-        <h1>광고 시청 중 (20초 후 자동 이동)</h1>
-
-        <!-- 광고 이미지 표시 -->
+        
+        <!-- 광고 이미지 표시 (앱 화면 중앙에 위치) -->
         <img id="ad-image" 
              src="https://i.postimg.cc/cH9Br0N4/jemog-eul-iblyeoghaejuseyo-004.png" 
-             alt="광고 이미지">
+             alt="광고 이미지: 리디렉션 광고">
 
-        <p class="countdown-message">
-            잠시 후 자동으로 페이지가 이동됩니다. 남은 시간:
-        </p>
+        <!-- 간결한 메시지 -->
+        <h1>광고 시청 후 이동</h1>
+        
+        <!-- 타이머 -->
         <span id="countdown">20</span>
-
-        <p class="destination">
-            이동할 대상: `pocketbly.netlify.app`의 기존 경로로 리디렉션
+        <p class="countdown-message">
+             남은 시간
         </p>
+
     </div>
 
     <script>
-        // JavaScript 로직
+        // JavaScript 로직 (기존과 동일)
         const REDIRECT_TIME_SECONDS = 20;
         const TARGET_HOST = "https://pocketbly.netlify.app";
         const countdownElement = document.getElementById('countdown');
@@ -124,10 +160,11 @@
         }
 
         /**
-         * 20초 후 리디렉션을 실행하고 사용자에게 알립니다.
+         * 20초 후 리디렉션을 실행합니다.
          */
         function startRedirection() {
-            countdownElement.textContent = "이동 중...";
+            countdownElement.textContent = "0";
+            document.querySelector('.countdown-message').textContent = "페이지를 이동합니다...";
             
             // 현재 URL에서 경로와 쿼리 매개변수 (예: /view?id=~~~~)를 가져옵니다.
             const currentPath = window.location.pathname;
@@ -143,14 +180,12 @@
         }
 
         // 페이지 로드 시 카운트다운을 즉시 시작합니다.
-        // 첫 업데이트는 1초 후에 발생하므로, 초기값을 표시하기 위해 먼저 한 번 호출합니다.
         countdownElement.textContent = remainingTime;
         remainingTime--;
         
         timerId = setInterval(updateCountdown, 1000); // 1초마다 카운트다운 실행
         
         console.log("[INFO] 광고 타이머가 시작되었습니다. 20초 후 리디렉션됩니다.");
-
     </script>
 </body>
 </html>
