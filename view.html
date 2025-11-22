@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>20초 광고 후 리디렉션</title>
+    <style>
+        /* CSS 스타일링 */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            width: 500px;
+        }
+
+        h1 {
+            color: #d9534f;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .countdown-message {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        #countdown {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #5cb85c;
+            margin-bottom: 20px;
+            display: inline-block;
+            padding: 10px 20px;
+            border: 3px solid #5cb85c;
+            border-radius: 8px;
+            background-color: #eaf8ea;
+        }
+
+        #ad-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .destination {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        /* 모바일 반응형 설정 */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 1.3rem;
+            }
+            #countdown {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>광고 시청 중 (20초 후 자동 이동)</h1>
+
+        <!-- 광고 이미지 표시 -->
+        <img id="ad-image" 
+             src="https://i.postimg.cc/cH9Br0N4/jemog-eul-iblyeoghaejuseyo-004.png" 
+             alt="광고 이미지">
+
+        <p class="countdown-message">
+            잠시 후 자동으로 페이지가 이동됩니다. 남은 시간:
+        </p>
+        <span id="countdown">20</span>
+
+        <p class="destination">
+            이동할 대상: `pocketbly.netlify.app`의 기존 경로로 리디렉션
+        </p>
+    </div>
+
+    <script>
+        // JavaScript 로직
+        const REDIRECT_TIME_SECONDS = 20;
+        const TARGET_HOST = "https://pocketbly.netlify.app";
+        const countdownElement = document.getElementById('countdown');
+        let remainingTime = REDIRECT_TIME_SECONDS;
+        let timerId;
+
+        /**
+         * 1초마다 카운트다운을 업데이트하고, 시간이 되면 리디렉션을 수행합니다.
+         */
+        function updateCountdown() {
+            if (remainingTime <= 0) {
+                clearInterval(timerId); // 타이머 중지
+                startRedirection();
+                return;
+            }
+            
+            countdownElement.textContent = remainingTime;
+            remainingTime--;
+        }
+
+        /**
+         * 20초 후 리디렉션을 실행하고 사용자에게 알립니다.
+         */
+        function startRedirection() {
+            countdownElement.textContent = "이동 중...";
+            
+            // 현재 URL에서 경로와 쿼리 매개변수 (예: /view?id=~~~~)를 가져옵니다.
+            const currentPath = window.location.pathname;
+            const currentQuery = window.location.search;
+            
+            // 새로운 URL을 TARGET_HOST에 기존 경로와 쿼리를 붙여서 생성합니다.
+            const newUrl = TARGET_HOST + currentPath + currentQuery;
+
+            console.log(`[INFO] 20초 경과. 리디렉션 시작: ${newUrl}`);
+            
+            // window.location.replace()를 사용하여 리디렉션합니다.
+            window.location.replace(newUrl);
+        }
+
+        // 페이지 로드 시 카운트다운을 즉시 시작합니다.
+        // 첫 업데이트는 1초 후에 발생하므로, 초기값을 표시하기 위해 먼저 한 번 호출합니다.
+        countdownElement.textContent = remainingTime;
+        remainingTime--;
+        
+        timerId = setInterval(updateCountdown, 1000); // 1초마다 카운트다운 실행
+        
+        console.log("[INFO] 광고 타이머가 시작되었습니다. 20초 후 리디렉션됩니다.");
+
+    </script>
+</body>
+</html>
