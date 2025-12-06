@@ -4,9 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#333333">
-    <title>Gesture EPUB Reader</title>
+    <title>Listening Reader</title>
 
-    <!-- 스타일 정의 -->
     <style>
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; background: #f4f4f4; }
@@ -15,13 +14,11 @@
             width: 100%; height: 100vh; 
             display: flex; flex-direction: column; 
             overflow: hidden;
-            transition: opacity 0.2s ease, transform 0.2s ease; /* 애니메이션용 */
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
-        
-        /* 책 렌더링 영역 */
         #viewer { width: 100%; height: 100%; }
 
-        /* 애니메이션 효과 클래스 */
+        /* 애니메이션 효과 */
         .anim-fade-out { opacity: 0.2; }
         .anim-slide-left { transform: translateX(-30px); opacity: 0.5; }
         .anim-slide-right { transform: translateX(30px); opacity: 0.5; }
@@ -38,11 +35,8 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
 
-        /* 터치 감지 레이어 (전체 화면 덮음) */
-        #touch-layer {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 50; /* 뷰어 위에 투명하게 존재 */
-        }
+        /* 터치 레이어 */
+        #touch-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; }
 
         /* 메뉴바 */
         .menu-bar {
@@ -58,9 +52,17 @@
 
         .icon-btn { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
         .control-row { display: flex; width: 100%; justify-content: space-between; align-items: center; }
-        .theme-btn { flex: 1; padding: 8px; border: 1px solid #666; border-radius: 5px; background: none; color: #fff; margin: 0 2px; font-size: 12px;}
-        .theme-btn.active { background: #fff; color: #000; font-weight: bold; }
         
+        .theme-btn { flex: 1; padding: 8px; border: 1px solid #666; border-radius: 5px; background: none; color: #fff; margin: 0 2px; font-size: 12px;}
+        
+        /* TTS 버튼 스타일 */
+        #tts-btn { 
+            width: 100%; padding: 12px; background: #444; color: white; border: none; 
+            border-radius: 8px; font-weight: bold; margin-top: 5px; display: flex; 
+            align-items: center; justify-content: center; gap: 10px; cursor: pointer;
+        }
+        #tts-btn.playing { background: #e74c3c; color: white; } /* 재생 중일 때 빨간색 */
+
         select { background: #444; color: white; border: none; padding: 5px; border-radius: 4px; }
 
         #loader {
@@ -71,7 +73,6 @@
         #error-msg { color: red; display: none; margin-top: 20px; font-size: 12px; }
     </style>
 
-    <!-- 라이브러리 로드 -->
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
@@ -79,47 +80,41 @@
 <body>
 
     <div id="empty-state">
-        <h2 style="margin-bottom: 10px;">Gesture Reader</h2>
-        <p style="color:#666; font-size: 14px;">슬라이드로 넘기는<br>고품질 리더입니다.</p>
+        <h2 style="margin-bottom: 10px;">Audio Reader</h2>
+        <p style="color:#666; font-size: 14px;">읽어주기 기능이 포함된<br>모바일 최적화 뷰어</p>
         <button class="upload-btn" onclick="document.getElementById('file-input').click()">책 선택하기</button>
         <input type="file" id="file-input" accept=".epub" style="display: none;" onchange="handleFile(this)">
         <div id="error-msg">라이브러리 로딩 실패. 새로고침 필요.</div>
     </div>
 
     <div id="loader">로딩중...</div>
-
-    <!-- 뷰어 컨테이너 (애니메이션 적용 대상) -->
-    <div id="viewer-container">
-        <div id="viewer"></div>
-    </div>
-
-    <!-- 터치 및 제스처 감지용 투명 레이어 -->
+    <div id="viewer-container"><div id="viewer"></div></div>
     <div id="touch-layer"></div>
 
-    <!-- 상단 메뉴 -->
     <div id="top-bar" class="menu-bar">
         <button class="icon-btn" onclick="resetBook()">← 나가기</button>
-        <span id="page-info" style="font-size: 14px;">Page</span>
+        <span id="page-info" style="font-size: 14px;">Reader</span>
         <div style="width: 20px;"></div>
     </div>
 
-    <!-- 하단 메뉴 -->
     <div id="bottom-bar" class="menu-bar">
-        <!-- 폰트 크기 -->
+        <!-- 1. TTS 컨트롤 (핵심) -->
+        <button id="tts-btn" onclick="toggleTTS()">
+            <span>🔊 듣기 시작</span>
+        </button>
+
         <div class="control-row">
             <span style="font-size: 12px;">글자 크기</span>
             <input type="range" min="80" max="200" value="100" step="10" style="width: 60%;" oninput="changeFontSize(this.value)">
         </div>
-        <!-- 애니메이션 설정 -->
         <div class="control-row">
             <span style="font-size: 12px;">넘김 효과</span>
             <select id="anim-select" onchange="changeAnimation(this.value)">
-                <option value="none">없음 (빠름)</option>
+                <option value="none">없음</option>
                 <option value="slide" selected>슬라이드</option>
                 <option value="fade">페이드</option>
             </select>
         </div>
-        <!-- 테마 -->
         <div class="control-row">
             <button class="theme-btn" onclick="setTheme('light')">밝음</button>
             <button class="theme-btn" onclick="setTheme('sepia')">세피아</button>
@@ -131,29 +126,32 @@
         var book = null;
         var rendition = null;
         var isMenuOpen = false;
-        var currentAnim = 'slide'; // 기본 애니메이션
-
-        // 제스처 관련 변수
-        var touchStartX = 0;
-        var touchStartY = 0;
-        var touchEndTime = 0;
+        var currentAnim = 'slide';
+        
+        // 제스처 관련
+        var touchStartX = 0, touchStartY = 0;
+        
+        // TTS 관련 변수
+        var isTTSPlaying = false;
+        var synth = window.speechSynthesis;
+        var currentUtterance = null;
 
         window.onload = function() {
             if (typeof ePub === 'undefined') {
                 document.getElementById('error-msg').style.display = 'block';
                 return;
             }
-            // 저장된 설정 로드
             localforage.getItem('animType').then(function(val){
-                if(val) {
-                    currentAnim = val;
-                    document.getElementById('anim-select').value = val;
-                }
+                if(val) { currentAnim = val; document.getElementById('anim-select').value = val; }
             });
-
             localforage.getItem('bookData').then(function(data) {
                 if (data) loadBook(data);
             });
+            
+            // TTS 음성 로드 (비동기라 미리 호출)
+            if(synth.onvoiceschanged !== undefined) {
+                synth.onvoiceschanged = function() {};
+            }
         };
 
         function handleFile(input) {
@@ -184,23 +182,110 @@
                     rendition.display(cfi || undefined).then(function() {
                         document.getElementById('loader').style.display = 'none';
                         initThemes();
-                        updatePageInfo();
                     });
                 });
 
                 rendition.on("relocated", function(location) {
                     localforage.setItem('lastCfi', location.start.cfi);
-                    updatePageInfo();
+                    // 페이지 넘어가면 자동으로 읽기 (TTS 켜져있을 시)
+                    if(isTTSPlaying) {
+                        // 약간의 딜레이 후 읽기 시작 (페이지 로딩 안정화)
+                        setTimeout(readCurrentPage, 500); 
+                    }
                 });
 
             } catch (e) {
-                alert("오류: " + e);
-                resetBook();
+                alert("오류: " + e); resetBook();
             }
         }
 
         /* -----------------------------------------------------------
-           제스처 & 터치 로직 (핵심)
+           TTS (Text to Speech) 핵심 로직
+           ----------------------------------------------------------- */
+        function toggleTTS() {
+            var btn = document.getElementById('tts-btn');
+            
+            if (isTTSPlaying) {
+                // 멈춤
+                stopTTS();
+                btn.innerHTML = "<span>🔊 듣기 시작</span>";
+                btn.classList.remove('playing');
+                isTTSPlaying = false;
+            } else {
+                // 시작
+                isTTSPlaying = true;
+                btn.innerHTML = "<span>⏹ 읽기 중단</span>";
+                btn.classList.add('playing');
+                closeMenu(); // 메뉴 닫고 시작
+                readCurrentPage();
+            }
+        }
+
+        function stopTTS() {
+            if (synth.speaking || synth.pending) {
+                synth.cancel();
+            }
+        }
+
+        function readCurrentPage() {
+            if (!isTTSPlaying || !rendition) return;
+
+            // 1. 현재 화면에 보이는 텍스트 추출
+            // epub.js의 visible range를 가져와 텍스트로 변환
+            var currentLocation = rendition.currentLocation();
+            if (currentLocation && currentLocation.start && currentLocation.end) {
+                var range = currentLocation.start.cfi; // Start CFI
+                var rangeEnd = currentLocation.end.cfi; // End CFI
+                
+                // 범위 내 텍스트 가져오기
+                book.getRange(range + "-" + rangeEnd).then(function(rangeObj) {
+                    var text = rangeObj.toString();
+                    
+                    // 텍스트 정제 (줄바꿈 제거 등)
+                    text = text.replace(/\s+/g, ' ').trim();
+
+                    if (text.length > 0) {
+                        speakText(text);
+                    } else {
+                        // 텍스트가 없으면(이미지 등) 바로 다음 페이지로
+                        nextPage();
+                    }
+                });
+            }
+        }
+
+        function speakText(text) {
+            stopTTS(); // 기존 음성 취소
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.rate = 1.0; // 속도 (0.1 ~ 10)
+            currentUtterance.pitch = 1.0; // 높낮이
+
+            // 한국어 음성 찾기
+            var voices = synth.getVoices();
+            var korVoice = voices.find(v => v.lang.includes('ko'));
+            if (korVoice) currentUtterance.voice = korVoice;
+
+            // 다 읽었을 때 이벤트
+            currentUtterance.onend = function() {
+                if (isTTSPlaying) {
+                    nextPage(); // 다 읽으면 다음 페이지로
+                }
+            };
+
+            currentUtterance.onerror = function(e) {
+                console.error("TTS Error:", e);
+                // 에러나면 그냥 멈춤
+                isTTSPlaying = false;
+                document.getElementById('tts-btn').classList.remove('playing');
+                document.getElementById('tts-btn').innerText = "🔊 듣기 시작";
+            };
+
+            synth.speak(currentUtterance);
+        }
+
+        /* -----------------------------------------------------------
+           제스처 & 페이지 컨트롤
            ----------------------------------------------------------- */
         var touchLayer = document.getElementById('touch-layer');
 
@@ -212,57 +297,37 @@
         touchLayer.addEventListener('touchend', function(e) {
             var touchEndX = e.changedTouches[0].screenX;
             var touchEndY = e.changedTouches[0].screenY;
-            
             handleGesture(touchStartX, touchStartY, touchEndX, touchEndY);
-            e.preventDefault(); // 더블탭 줌 등 기본 동작 방지
+            e.preventDefault();
         }, {passive: false});
-
-        // PC 마우스 드래그 지원 (테스트용)
-        var isMouseDown = false;
-        touchLayer.addEventListener('mousedown', function(e) {
-            isMouseDown = true; touchStartX = e.screenX; touchStartY = e.screenY;
-        });
-        touchLayer.addEventListener('mouseup', function(e) {
-            if(!isMouseDown) return;
-            isMouseDown = false;
-            handleGesture(touchStartX, touchStartY, e.screenX, e.screenY);
-        });
 
         function handleGesture(startX, startY, endX, endY) {
             var diffX = endX - startX;
-            var diffY = endY - startY;
             var absX = Math.abs(diffX);
-            var absY = Math.abs(diffY);
+            var absY = Math.abs(endY - startY);
 
-            // 1. 탭(클릭) 처리 (이동거리가 작을 때)
+            // 탭
             if (absX < 10 && absY < 10) {
-                // 화면 3분할 탭
                 var width = window.innerWidth;
-                if (startX < width * 0.3) {
-                    prevPage();
-                } else if (startX > width * 0.7) {
-                    nextPage();
-                } else {
-                    toggleMenu();
-                }
+                if (startX < width * 0.3) prevPage();
+                else if (startX > width * 0.7) nextPage();
+                else toggleMenu();
                 return;
             }
-
-            // 2. 스와이프(슬라이드) 처리 (X축 이동이 Y축보다 크고 일정 거리 이상일 때)
+            // 슬라이드
             if (absX > absY && absX > 50) {
-                if (diffX > 0) {
-                    prevPage(); // 오른쪽으로 밈 -> 이전 페이지
-                } else {
-                    nextPage(); // 왼쪽으로 밈 -> 다음 페이지
-                }
+                if (diffX > 0) prevPage();
+                else nextPage();
             }
         }
 
-        /* -----------------------------------------------------------
-           페이지 넘김 및 애니메이션 효과
-           ----------------------------------------------------------- */
         function nextPage() {
             if(!rendition) return;
+            // 수동으로 넘기면 TTS는 계속 유지되거나, 로직에 따라 멈출 수 있음.
+            // 여기서는 '자동 읽기' 흐름을 위해 유지함. 
+            // 단, relocated 이벤트에서 자동 읽기가 트리거됨.
+            if(isTTSPlaying) stopTTS(); // 페이지 넘기는 순간 일단 침묵
+            
             applyAnimation('next');
             rendition.next();
             closeMenu();
@@ -270,6 +335,8 @@
 
         function prevPage() {
             if(!rendition) return;
+            if(isTTSPlaying) stopTTS(); // 이전으로 가면 일단 멈춤
+            
             applyAnimation('prev');
             rendition.prev();
             closeMenu();
@@ -277,82 +344,43 @@
 
         function applyAnimation(direction) {
             if (currentAnim === 'none') return;
-
             var container = document.getElementById('viewer-container');
-            var animClass = '';
-
-            if (currentAnim === 'fade') {
-                animClass = 'anim-fade-out';
-            } else if (currentAnim === 'slide') {
-                // 다음 페이지로 갈 때는 왼쪽으로 사라지는 느낌
-                // 이전 페이지로 갈 때는 오른쪽으로 사라지는 느낌
-                animClass = (direction === 'next') ? 'anim-slide-left' : 'anim-slide-right';
-            }
-
-            // 애니메이션 클래스 적용
+            var animClass = (currentAnim === 'fade') ? 'anim-fade-out' : ((direction === 'next') ? 'anim-slide-left' : 'anim-slide-right');
             container.classList.add(animClass);
-
-            // 300ms 후 클래스 제거 (원상복구)
-            setTimeout(function() {
-                container.classList.remove(animClass);
-            }, 250);
+            setTimeout(() => container.classList.remove(animClass), 250);
         }
 
         /* -----------------------------------------------------------
-           설정 및 유틸리티
+           유틸리티
            ----------------------------------------------------------- */
-        function changeAnimation(val) {
-            currentAnim = val;
-            localforage.setItem('animType', val);
-        }
-
         function toggleMenu() {
             isMenuOpen = !isMenuOpen;
-            if (isMenuOpen) document.body.classList.add('menu-visible');
-            else document.body.classList.remove('menu-visible');
+            document.body.classList.toggle('menu-visible', isMenuOpen);
         }
         function closeMenu() {
             isMenuOpen = false;
             document.body.classList.remove('menu-visible');
         }
-
         function initThemes() {
             rendition.themes.register("light", { body: { color: "#000", background: "#f4f4f4" } });
             rendition.themes.register("dark", { body: { color: "#ccc", background: "#1a1a1a" } });
             rendition.themes.register("sepia", { body: { color: "#5f4b32", background: "#f6f1d1" } });
-            
-            localforage.getItem('theme').then(function(t){ setTheme(t || 'light'); });
+            localforage.getItem('theme').then(t => setTheme(t || 'light'));
         }
-
         function setTheme(theme) {
             if(!rendition) return;
             rendition.themes.select(theme);
             localforage.setItem('theme', theme);
-            
             var bg = theme === 'dark' ? '#1a1a1a' : (theme === 'sepia' ? '#f6f1d1' : '#f4f4f4');
             document.body.style.backgroundColor = bg;
-            document.getElementById('viewer-container').style.backgroundColor = bg; // 컨테이너 배경도 변경
-            
-            // 버튼 스타일 업데이트
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-            // (간단하게 구현하기 위해 active 클래스 처리는 생략하거나 추가 가능)
+            document.getElementById('viewer-container').style.backgroundColor = bg;
         }
-
-        function changeFontSize(val) {
-            if(rendition) rendition.themes.fontSize(val + "%");
-        }
-
-        function updatePageInfo() {
-            // 현재 페이지 위치 정보 (API 한계로 완벽하진 않음)
-            if(book) {
-                // const loc = rendition.currentLocation();
-                // document.getElementById('page-info').innerText = ...
-            }
-        }
-
+        function changeFontSize(val) { if(rendition) rendition.themes.fontSize(val + "%"); }
+        function changeAnimation(val) { currentAnim = val; localforage.setItem('animType', val); }
         function resetBook() {
             if(confirm("책을 닫으시겠습니까?")) {
-                localforage.clear().then(function() { location.reload(); });
+                stopTTS();
+                localforage.clear().then(() => location.reload());
             }
         }
     </script>
